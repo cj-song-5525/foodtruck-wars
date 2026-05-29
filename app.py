@@ -9,13 +9,13 @@ import math
 st.set_page_config(page_title="푸드트럭 워즈", layout="centered", page_icon="🚚")
 
 MENUS = {
-    "수제버거": {"price": 8000, "cost": 4000, "base_q": 20},
-    "타코&핫도그": {"price": 5000, "cost": 2500, "base_q": 40},
-    "마라N떡볶이": {"price": 5000, "cost": 2000, "base_q": 35},
-    "닭꼬치": {"price": 4000, "cost": 1500, "base_q": 45},
-    "슬러시와소다팝": {"price": 2000, "cost": 500, "base_q": 50},
-    "알래스카커피": {"price": 3000, "cost": 1000, "base_q": 30},
-    "멕시칸츄러스": {"price": 3000, "cost": 1000, "base_q": 30}
+    "수제버거": {"price": 10000, "cost": 4500, "base_q": 20},
+    "타코&핫도그": {"price": 6000, "cost": 2500, "base_q": 40},
+    "마라N떡볶이": {"price": 6000, "cost": 2000, "base_q": 35},
+    "닭꼬치": {"price": 5000, "cost": 1500, "base_q": 45},
+    "슬러시와소다팝": {"price": 3000, "cost": 500, "base_q": 50},
+    "알래스카커피": {"price": 4000, "cost": 1000, "base_q": 30},
+    "멕시칸츄러스": {"price": 3500, "cost": 1000, "base_q": 30}
 }
 
 MISSIONS = [
