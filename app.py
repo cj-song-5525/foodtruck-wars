@@ -4,7 +4,7 @@ import random
 import math
 
 # ==========================================
-# 1. 게임 기본 세팅 및 데이터 로드 
+# 1. 게임 기본 세팅 및 데이터 로드
 # ==========================================
 st.set_page_config(page_title="푸드트럭 워즈", layout="centered", page_icon="🚚")
 
@@ -21,7 +21,7 @@ MENUS = {
 MISSIONS = [
     # 테마 1. 수요의 극단적 변동
     {"title": "초대형 아이돌 콘서트", "news": "🎸 메인 무대 게릴라 콘서트 2시간 진행! 방문객 2배 폭증!", "choices": ["[선제적 가격 인상] 전 메뉴 가격 20% 인상", "[박리다매] 가격 10% 인하로 주문 싹쓸이", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 2.0},
-    {"title": "기상청 기습 호우 예보", "news": "⛈️ 오후 3시부터 집중 호우 예보! 야외 인파가 빠르게 빠져나갑니다.", "choices": ["[조기 마감] 오늘 영업 종료 (재료 내일 이월)", "[눈물의 떨이] 전 품목 30% 파격 세일", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 0.4},
+    {"title": "기상청 기습 호우 예보", "news": "⛈️ 오후 3시부터 집중 호우 예보! 유원지 야외 인파가 빠르게 빠져나갑니다.", "choices": ["[조기 마감] 오늘 영업 종료 (재료 내일 이월)", "[눈물의 떨이] 전 품목 30% 파격 세일", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 0.4},
     {"title": "유원지 패밀리 데이", "news": "👨‍👩‍👧‍👦 어린이 동반 가족 단위 손님 급증! 유원지 분위기가 활기찹니다.", "choices": ["[가족 세트 할인] 가격 10% 인하 전략", "[감성 마케팅] 홍보 풍선 배포 (고정비 2만원 지출)", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 1.3},
     {"title": "입장료 기습 인상", "news": "🎫 주최 측의 횡포! 비싼 입장료 탓에 손님들의 지갑이 얇아졌습니다.", "choices": ["[가성비 어필] 전 메뉴 가격 15% 인하", "[고급화 전략] 원가 10% 상승 및 가격 20% 인상", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 0.7},
     {"title": "유원지 야간 개장", "news": "🌙 오늘 밤 11시까지 연장 영업! 야간 방문객 추가 유입 확정.", "choices": ["[알바 추가 고용] 고정비 2만원 지출 (수요 100% 흡수)", "[야간 떨이 행사] 가격 20% 인하로 회전율 극대화", "[현상 유지] 추가 지출 없이 내 체력껏 영업"], "multiplier": 1.4},
@@ -74,7 +74,7 @@ if "my_phase" not in st.session_state:
     st.session_state.my_phase = "대기실"
 
 # ==========================================
-# 3. 로그인 (재접속 방어 로직 추가)
+# 3. 로그인 
 # ==========================================
 def render_login():
     st.title("🚚 푸드트럭 워즈")
@@ -95,11 +95,9 @@ def render_login():
                 elif nick == "admin":
                     st.error("이 닉네임은 사용할 수 없습니다.")
                 elif nick in db["users"]:
-                    # 기존 유저 튕김 시 재접속 허용 (새로고침 방어)
                     st.session_state.nickname = nick
                     st.rerun()
                 else:
-                    # 신규 유저 생성
                     init_cost = init_inv * MENUS[menu]["cost"] + 20000
                     db["users"][nick] = {
                         "menu": menu,
@@ -136,7 +134,7 @@ def render_student_view():
         st.session_state.nickname = None
         st.rerun()
 
-    # --- 서버 상태와 내 상태가 다를 때 (관리자가 턴을 넘겼을 때 나타나는 팝업) ---
+    # 수동 동기화 릴레이
     if st.session_state.my_phase != db["phase"]:
         st.info("🔔 관리자가 새로운 단계를 열었습니다!")
         if db["phase"] == "낮":
@@ -157,12 +155,10 @@ def render_student_view():
                 st.rerun()
         return
 
-    # --- 상단 고정 정보 ---
     st.header(f"사장님: {nick}")
     st.write(f"**메뉴:** {user_data['menu']} | **💰 자본금:** {user_data['cash']:,}원 | **📦 재고:** {user_data['inventory']}인분")
     st.divider()
 
-    # --- 페이즈별 메인 화면 ---
     if st.session_state.my_phase == "대기실":
         st.info("⏳ 영업 준비 완료! 모든 사장님이 입장하고 게임이 시작될 때까지 대기해 주세요.")
         if st.button("🔄 게임 시작 확인 (새로고침)", use_container_width=True):
@@ -173,6 +169,36 @@ def render_student_view():
             st.success("✔️ 영업 전략 제출 완료! 관리자의 정산(밤)을 기다리세요.")
             if st.button("🔄 정산 완료 확인 (새로고침)", use_container_width=True):
                 st.rerun()
+                
+        # [핵심 보완] 재고가 0 이하인 경우 긴급 구제 분기 (투트랙 구현)
+        elif user_data["inventory"] <= 0:
+            st.subheader("🚨 긴급 상황: 재고가 모두 소진되었습니다!")
+            st.error("창고가 완전히 비어 있어 오늘 정상적인 뉴스 미션에 참가할 수 없습니다. 대책을 수립하세요.")
+            
+            with st.form("emergency_form"):
+                emergency_choice = st.radio(
+                    "재고 고갈 대책 선택",
+                    [
+                        "🛏️ [강제 휴업] 오늘 하루 영업을 쉬고 트럭을 정비합니다. (추가 비용 없음, 오늘 매출 0, 자리세만 납부)",
+                        "🚚 [긴급 퀵 배송] 퀵 배송비 50,000원을 내고 재료 50인분을 긴급 공수하여 미션에 참여합니다."
+                    ]
+                )
+                submit = st.form_submit_button("결정 제출")
+                if submit:
+                    if "긴급 퀵 배송" in emergency_choice:
+                        if user_data["cash"] < 50000:
+                            st.error("❌ 잔액이 부족하여 퀵 배송을 이용할 수 없습니다. 강제 휴업을 선택하세요.")
+                        else:
+                            db["users"][nick]["cash"] -= 50000
+                            db["users"][nick]["inventory"] = 50
+                            # 퀵배송 시 오늘 미션의 현상 유지 전략으로 자동 참여 처리
+                            db["users"][nick]["day_choice"] = "[현상 유지] 기존 가격과 영업 방식 유지" if db["day"] > 1 else "[현상 유지] 정가 영업"
+                            db["users"][nick]["day_ready"] = True
+                            st.rerun()
+                    else:
+                        db["users"][nick]["day_choice"] = "[강제 휴업]"
+                        db["users"][nick]["day_ready"] = True
+                        st.rerun()
         else:
             if db["day"] == 1:
                 st.subheader("🌅 [1일 차] 두근두근 첫 장사!")
@@ -241,7 +267,6 @@ def render_student_view():
 def render_admin():
     st.header("👨‍🏫 관리자 통제 센터")
     
-    # 관리자 업데이트 버튼 추가 (이걸 누르면 실시간 제출 현황 반영)
     if st.button("🔄 실시간 현황 업데이트 (새로고침)", type="secondary"):
         st.rerun()
     
@@ -309,7 +334,8 @@ def render_admin():
                 sold = min(final_demand, data["inventory"])
                 revenue = sold * final_price
                 
-                if "조기 마감" in choice_str:
+                # 조기 마감 및 강제 휴업 예외처리
+                if "조기 마감" in choice_str or "[강제 휴업]" in choice_str:
                     final_demand = 0
                     sold = 0
                     revenue = 0
