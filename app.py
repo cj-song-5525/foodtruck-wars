@@ -99,7 +99,6 @@ def render_login():
                     st.session_state.nickname = nick
                     st.rerun()
                 else:
-                    # [수정] 첫 발주 물류비 30,000원 반영
                     init_cost = init_inv * MENUS[menu]["cost"] + 30000
                     db["users"][nick] = {
                         "menu": menu,
@@ -186,7 +185,6 @@ def render_student_view():
                 submit = st.form_submit_button("결정 제출")
                 if submit:
                     if "긴급 퀵 배송" in emergency_choice:
-                        # [수정] 긴급 퀵 배송비 100,000원 적용
                         if user_data["cash"] < 100000:
                             st.error("❌ 잔액이 부족하여 퀵 배송을 이용할 수 없습니다. 강제 휴업을 선택하세요.")
                         else:
@@ -235,18 +233,20 @@ def render_student_view():
             st.divider()
             st.subheader("🚚 내일 장사 도매상 발주")
             menu_cost = MENUS[user_data["menu"]]["cost"]
-            # [수정] 일반 발주 배달비 30,000원 표시
             st.write(f"*(내 메뉴 원가: {menu_cost:,}원 / 1회 배달비: 30,000원)*")
             
+            # [수정 1] 발주 폼 선택지에 예상비용을 깔끔하게 포함시킵니다 (텍스트 분리 출력 제거)
             with st.form("order_form"):
-                order_qty = st.selectbox("추가 발주 인분 수", [0, 30, 50, 70, 100])
-                # [수정] 발주 시 고정 물류비 30,000원 적용
-                total_cost = (order_qty * menu_cost) + 30000 if order_qty > 0 else 0
-                st.write(f"**총 예상 비용: {total_cost:,}원**")
+                def format_order(q):
+                    if q == 0: return "발주 안 함 (추가 비용 0원)"
+                    return f"{q}인분 (총 예상 비용: {(q * menu_cost) + 30000:,}원)"
+                
+                order_qty = st.selectbox("추가 발주 인분 수", [0, 30, 50, 70, 100], format_func=format_order)
                 
                 submit = st.form_submit_button("발주서 확정 (제출)")
                 
                 if submit:
+                    total_cost = (order_qty * menu_cost) + 30000 if order_qty > 0 else 0
                     if user_data["inventory"] + order_qty > 100:
                         st.error("❌ 창고 최대 한도(100인분)를 초과할 수 없습니다.")
                     elif user_data["cash"] < total_cost:
@@ -308,7 +308,6 @@ def render_admin():
                 choice_str = str(data.get("day_choice", ""))
                 mod_price = 1.0
                 mod_demand = 1.0
-                # [수정] 기본 자리세 50,000원 상향
                 extra_fc = 50000 
                 
                 if "가격 10% 인상" in choice_str: mod_price = 1.1; mod_demand = 0.85
@@ -321,7 +320,6 @@ def render_admin():
                 elif "가격 20% 인하" in choice_str: mod_price = 0.8; mod_demand = 1.8
                 elif "가격 30% 인하" in choice_str: mod_price = 0.7; mod_demand = 2.5
                 
-                # [수정] 마케팅비 및 인건비(5만) 동적 파싱 추가
                 if "마케팅" in choice_str or "지출" in choice_str or "고용" in choice_str or "매입" in choice_str:
                     if "1만원" in choice_str: extra_fc += 10000; mod_demand *= 1.3
                     elif "2만원" in choice_str: extra_fc += 20000; mod_demand *= 1.6
@@ -338,7 +336,6 @@ def render_admin():
                 sold = min(final_demand, data["inventory"])
                 revenue = sold * final_price
                 
-                # 조기 마감 및 강제 휴업 예외처리 (휴업 시에도 자리세 5만원은 정상 차감됨)
                 if "조기 마감" in choice_str or "[강제 휴업]" in choice_str:
                     final_demand = 0
                     sold = 0
@@ -366,15 +363,17 @@ def render_admin():
     st.divider()
     
     st.subheader("📊 실시간 랭킹")
-    if db["users"]:
-        df = pd.DataFrame([
-            {"닉네임": k, "메뉴": v["menu"], "자본금": f"{v['cash']:,}원", "재고": f"{v['inventory']}인분", "제출여부": "완료" if (v["day_ready"] if db["phase"]=="낮" else v["night_ready"]) else "대기중"} 
-            for k, v in db["users"].items()
-        ])
-        df['자본금_숫자'] = df['자본금'].str.replace('원', '').str.replace(',', '').astype(int)
-        df = df.sort_values(by="자본금_숫자", ascending=False).drop(columns=['자본금_숫자']).reset_index(drop=True)
-        df.index = df.index + 1
-        st.dataframe(df, use_container_width=True)
+    # [수정 2] 순위표 스포일러 방지를 위해 접기/펴기 기능(expander)을 적용했습니다.
+    with st.expander("👀 순위표 공개 (학생들이 영수증을 확인한 후 클릭해서 펼치세요!)", expanded=False):
+        if db["users"]:
+            df = pd.DataFrame([
+                {"닉네임": k, "메뉴": v["menu"], "자본금": f"{v['cash']:,}원", "재고": f"{v['inventory']}인분", "제출여부": "완료" if (v["day_ready"] if db["phase"]=="낮" else v["night_ready"]) else "대기중"} 
+                for k, v in db["users"].items()
+            ])
+            df['자본금_숫자'] = df['자본금'].str.replace('원', '').str.replace(',', '').astype(int)
+            df = df.sort_values(by="자본금_숫자", ascending=False).drop(columns=['자본금_숫자']).reset_index(drop=True)
+            df.index = df.index + 1
+            st.dataframe(df, use_container_width=True)
     
     st.divider()
     
