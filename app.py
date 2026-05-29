@@ -4,11 +4,10 @@ import random
 import math
 
 # ==========================================
-# 1. 게임 기본 세팅 및 데이터 로드 (실전용)
+# 1. 게임 기본 세팅 및 데이터 로드 
 # ==========================================
 st.set_page_config(page_title="푸드트럭 워즈", layout="centered", page_icon="🚚")
 
-# 7대 메뉴 세팅 (기본 가격, 원가, 베이스 수요량)
 MENUS = {
     "수제버거": {"price": 8000, "cost": 4000, "base_q": 20},
     "타코&핫도그": {"price": 5000, "cost": 2500, "base_q": 40},
@@ -19,11 +18,10 @@ MENUS = {
     "멕시칸츄러스": {"price": 3000, "cost": 1000, "base_q": 30}
 }
 
-# 25개 전체 미션 풀 (실전용)
 MISSIONS = [
     # 테마 1. 수요의 극단적 변동
-    {"title": "초대형 아이돌 콘서트", "news": "🎸 메인 무대 게릴라 콘서트 2시간 진행! 유원지 방문객 2배 폭증!", "choices": ["[선제적 가격 인상] 전 메뉴 가격 20% 인상", "[박리다매] 가격 10% 인하로 주문 싹쓸이", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 2.0},
-    {"title": "기상청 기습 호우 예보", "news": "⛈️ 오후 3시부터 집중 호우 예보! 유원지 야외 인파가 빠르게 빠져나갑니다.", "choices": ["[조기 마감] 오늘 영업 종료 (재료 다음날 100% 이월)", "[눈물의 떨이] 전 품목 30% 파격 세일", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 0.4},
+    {"title": "초대형 아이돌 콘서트", "news": "🎸 메인 무대 게릴라 콘서트 2시간 진행! 방문객 2배 폭증!", "choices": ["[선제적 가격 인상] 전 메뉴 가격 20% 인상", "[박리다매] 가격 10% 인하로 주문 싹쓸이", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 2.0},
+    {"title": "기상청 기습 호우 예보", "news": "⛈️ 오후 3시부터 집중 호우 예보! 야외 인파가 빠르게 빠져나갑니다.", "choices": ["[조기 마감] 오늘 영업 종료 (재료 내일 이월)", "[눈물의 떨이] 전 품목 30% 파격 세일", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 0.4},
     {"title": "유원지 패밀리 데이", "news": "👨‍👩‍👧‍👦 어린이 동반 가족 단위 손님 급증! 유원지 분위기가 활기찹니다.", "choices": ["[가족 세트 할인] 가격 10% 인하 전략", "[감성 마케팅] 홍보 풍선 배포 (고정비 2만원 지출)", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 1.3},
     {"title": "입장료 기습 인상", "news": "🎫 주최 측의 횡포! 비싼 입장료 탓에 손님들의 지갑이 얇아졌습니다.", "choices": ["[가성비 어필] 전 메뉴 가격 15% 인하", "[고급화 전략] 원가 10% 상승 및 가격 20% 인상", "[현상 유지] 기존 가격과 영업 방식 유지"], "multiplier": 0.7},
     {"title": "유원지 야간 개장", "news": "🌙 오늘 밤 11시까지 연장 영업! 야간 방문객 추가 유입 확정.", "choices": ["[알바 추가 고용] 고정비 2만원 지출 (수요 100% 흡수)", "[야간 떨이 행사] 가격 20% 인하로 회전율 극대화", "[현상 유지] 추가 지출 없이 내 체력껏 영업"], "multiplier": 1.4},
@@ -56,28 +54,27 @@ MISSIONS = [
 ]
 
 # ==========================================
-# 2. 전역 상태 관리 (메모리 DB)
+# 2. 전역 상태 관리
 # ==========================================
 @st.cache_resource
 def get_db():
     return {
-        "users": {},           # 학생 개별 데이터
-        "phase": "대기실",       # 전체 게임 페이즈 (대기실 -> 낮 -> 밤 -> 종료)
-        "day": 1,              # 현재 일차
-        "mission": None,       # 오늘의 미션
-        "mission_pool": random.sample(MISSIONS, len(MISSIONS)) # 셔플된 미션 덱
+        "users": {},           
+        "phase": "대기실",       
+        "day": 1,              
+        "mission": None,       
+        "mission_pool": random.sample(MISSIONS, len(MISSIONS))
     }
 
 db = get_db()
 
-# 세션 관리 (개인 스마트폰용)
 if "nickname" not in st.session_state:
     st.session_state.nickname = None
 if "my_phase" not in st.session_state:
     st.session_state.my_phase = "대기실"
 
 # ==========================================
-# 3. 로그인 및 대기실
+# 3. 로그인 (재접속 방어 로직 추가)
 # ==========================================
 def render_login():
     st.title("🚚 푸드트럭 워즈")
@@ -98,8 +95,11 @@ def render_login():
                 elif nick == "admin":
                     st.error("이 닉네임은 사용할 수 없습니다.")
                 elif nick in db["users"]:
-                    st.error("이미 존재하는 닉네임입니다. (유령 닉네임이라면 관리자에게 문의하세요)")
+                    # 기존 유저 튕김 시 재접속 허용 (새로고침 방어)
+                    st.session_state.nickname = nick
+                    st.rerun()
                 else:
+                    # 신규 유저 생성
                     init_cost = init_inv * MENUS[menu]["cost"] + 20000
                     db["users"][nick] = {
                         "menu": menu,
@@ -136,31 +136,43 @@ def render_student_view():
         st.session_state.nickname = None
         st.rerun()
 
-    # 수동 동기화 릴레이
+    # --- 서버 상태와 내 상태가 다를 때 (관리자가 턴을 넘겼을 때 나타나는 팝업) ---
     if st.session_state.my_phase != db["phase"]:
-        st.info("⏳ 관리자의 지시에 따라 화면을 이동해 주세요.")
+        st.info("🔔 관리자가 새로운 단계를 열었습니다!")
         if db["phase"] == "낮":
-            if st.button("🌅 아침 맞이하기 (새 미션 확인)", use_container_width=True):
+            if st.button("🌅 아침 맞이하기 (새 미션 확인)", use_container_width=True, type="primary"):
                 st.session_state.my_phase = "낮"
                 st.rerun()
         elif db["phase"] == "밤":
-            if st.button("🌙 정산 결과 확인 (영수증 보기)", use_container_width=True):
+            if st.button("🌙 정산 결과 확인 (영수증 보기)", use_container_width=True, type="primary"):
                 st.session_state.my_phase = "밤"
                 st.rerun()
         elif db["phase"] == "종료":
-            if st.button("🏆 최종 랭킹 확인", use_container_width=True):
+            if st.button("🏆 최종 랭킹 확인", use_container_width=True, type="primary"):
                 st.session_state.my_phase = "종료"
+                st.rerun()
+        elif db["phase"] == "대기실":
+            if st.button("🔄 게임 초기화 됨 (처음으로)", use_container_width=True):
+                st.session_state.my_phase = "대기실"
                 st.rerun()
         return
 
+    # --- 상단 고정 정보 ---
     st.header(f"사장님: {nick}")
     st.write(f"**메뉴:** {user_data['menu']} | **💰 자본금:** {user_data['cash']:,}원 | **📦 재고:** {user_data['inventory']}인분")
     st.divider()
 
-    # --- 낮 페이즈 ---
-    if st.session_state.my_phase == "낮":
+    # --- 페이즈별 메인 화면 ---
+    if st.session_state.my_phase == "대기실":
+        st.info("⏳ 영업 준비 완료! 모든 사장님이 입장하고 게임이 시작될 때까지 대기해 주세요.")
+        if st.button("🔄 게임 시작 확인 (새로고침)", use_container_width=True):
+            st.rerun()
+
+    elif st.session_state.my_phase == "낮":
         if user_data["day_ready"]:
-            st.success("✔️ 영업 준비 완료! 다른 사장님들을 기다리고 있습니다.")
+            st.success("✔️ 영업 전략 제출 완료! 관리자의 정산(밤)을 기다리세요.")
+            if st.button("🔄 정산 완료 확인 (새로고침)", use_container_width=True):
+                st.rerun()
         else:
             if db["day"] == 1:
                 st.subheader("🌅 [1일 차] 두근두근 첫 장사!")
@@ -180,10 +192,11 @@ def render_student_view():
                     db["users"][nick]["day_ready"] = True
                     st.rerun()
 
-    # --- 밤 페이즈 ---
     elif st.session_state.my_phase == "밤":
         if user_data["night_ready"]:
-            st.success("✔️ 발주 완료! 주무시면서 내일 아침을 기다리세요.")
+            st.success("✔️ 야간 발주 완료! 주무시면서 내일 아침을 기다리세요.")
+            if st.button("🔄 다음 날 시작 확인 (새로고침)", use_container_width=True):
+                st.rerun()
         else:
             st.subheader(f"🌙 [{db['day']}일 차] 마감 영수증")
             receipt = user_data["last_receipt"]
@@ -216,7 +229,6 @@ def render_student_view():
                         db["users"][nick]["night_ready"] = True
                         st.rerun()
 
-    # --- 종료 페이즈 ---
     elif st.session_state.my_phase == "종료":
         st.balloons()
         st.subheader("🎉 푸드트럭 워즈 영업 종료!")
@@ -224,10 +236,14 @@ def render_student_view():
         st.success("대단히 수고하셨습니다. 화면의 최종 랭킹을 확인하세요!")
 
 # ==========================================
-# 5. 관리자 통제 센터 및 경제학 연산 코어
+# 5. 관리자 통제 센터
 # ==========================================
 def render_admin():
     st.header("👨‍🏫 관리자 통제 센터")
+    
+    # 관리자 업데이트 버튼 추가 (이걸 누르면 실시간 제출 현황 반영)
+    if st.button("🔄 실시간 현황 업데이트 (새로고침)", type="secondary"):
+        st.rerun()
     
     total_users = len(db["users"])
     ready_users = sum(1 for u in db["users"].values() if (u["day_ready"] if db["phase"] == "낮" else u["night_ready"]))
@@ -240,12 +256,10 @@ def render_admin():
 
     st.subheader("🎮 게임 진행 컨트롤")
     
-    # [1] 아침 맞이
     if db["phase"] in ["대기실", "밤"]:
         if st.button("🌅 다음 날 아침 맞이 (새 미션 발동)", type="primary"):
             if db["phase"] == "밤":
                 db["day"] += 1
-                # 덱에서 하나씩 뽑기 (다 떨어지면 다시 셔플)
                 if not db["mission_pool"]:
                     db["mission_pool"] = random.sample(MISSIONS, len(MISSIONS))
                 db["mission"] = db["mission_pool"].pop()
@@ -255,7 +269,6 @@ def render_admin():
                 u["day_ready"] = False
             st.rerun()
 
-    # [2] 영업 마감 및 경제학 연산 로직 (Auto-balancing Engine)
     if db["phase"] == "낮":
         if st.button("📊 낮 영업 마감 및 영수증 정산", type="primary"):
             for nick, data in db["users"].items():
@@ -263,38 +276,25 @@ def render_admin():
                 base_demand = m_info["base_q"]
                 base_price = m_info["price"]
                 
-                # 미션 기본 거시 승수
                 multiplier = db["mission"]["multiplier"] if db["day"] > 1 else 1.0
                 
-                # 키워드 파싱을 통한 학생의 선택 분석 (탄력성 연산)
                 choice_str = str(data.get("day_choice", ""))
                 mod_price = 1.0
                 mod_demand = 1.0
-                extra_fc = 30000  # 기본 자리세 3만 원
+                extra_fc = 30000 
                 
-                # 가격 변동 로직
-                if "가격 10% 인상" in choice_str:
-                    mod_price = 1.1; mod_demand = 0.85
-                elif "가격 15% 인상" in choice_str:
-                    mod_price = 1.15; mod_demand = 0.8
-                elif "가격 20% 인상" in choice_str:
-                    mod_price = 1.2; mod_demand = 0.7
-                elif "가격 30% 인상" in choice_str:
-                    mod_price = 1.3; mod_demand = 0.5
-                elif "가격 40% 인상" in choice_str:
-                    mod_price = 1.4; mod_demand = 0.4
-                elif "가격 10% 인하" in choice_str:
-                    mod_price = 0.9; mod_demand = 1.3
-                elif "가격 15% 인하" in choice_str:
-                    mod_price = 0.85; mod_demand = 1.5
-                elif "가격 20% 인하" in choice_str:
-                    mod_price = 0.8; mod_demand = 1.8
-                elif "가격 30% 인하" in choice_str:
-                    mod_price = 0.7; mod_demand = 2.5
+                # 경제학 연산 코어
+                if "가격 10% 인상" in choice_str: mod_price = 1.1; mod_demand = 0.85
+                elif "가격 15% 인상" in choice_str: mod_price = 1.15; mod_demand = 0.8
+                elif "가격 20% 인상" in choice_str: mod_price = 1.2; mod_demand = 0.7
+                elif "가격 30% 인상" in choice_str: mod_price = 1.3; mod_demand = 0.5
+                elif "가격 40% 인상" in choice_str: mod_price = 1.4; mod_demand = 0.4
+                elif "가격 10% 인하" in choice_str: mod_price = 0.9; mod_demand = 1.3
+                elif "가격 15% 인하" in choice_str: mod_price = 0.85; mod_demand = 1.5
+                elif "가격 20% 인하" in choice_str: mod_price = 0.8; mod_demand = 1.8
+                elif "가격 30% 인하" in choice_str: mod_price = 0.7; mod_demand = 2.5
                 
-                # 마케팅/비용 로직
                 if "마케팅" in choice_str or "지출" in choice_str or "고용" in choice_str:
-                    # 텍스트 내에서 1만원, 2만원, 3만원 추출
                     if "1만원" in choice_str: extra_fc += 10000; mod_demand *= 1.3
                     elif "2만원" in choice_str: extra_fc += 20000; mod_demand *= 1.6
                     elif "3만원" in choice_str: extra_fc += 30000; mod_demand *= 1.9
@@ -303,14 +303,12 @@ def render_admin():
                     if "10%" in choice_str: mod_demand *= 0.9
                     if "20%" in choice_str: mod_demand *= 0.8
                 
-                # 최종 수요 및 이윤 계산
                 final_demand = math.floor(base_demand * multiplier * mod_demand)
                 final_price = math.floor(base_price * mod_price)
                 
                 sold = min(final_demand, data["inventory"])
                 revenue = sold * final_price
                 
-                # 조기 마감 특수 룰
                 if "조기 마감" in choice_str:
                     final_demand = 0
                     sold = 0
@@ -331,27 +329,25 @@ def render_admin():
                 u["night_ready"] = False
             st.rerun()
 
-    # [3] 게임 종료
     if st.button("🏆 게임 최종 종료 (시상식)"):
         db["phase"] = "종료"
         st.rerun()
         
     st.divider()
     
-    # 랭킹 보드 (실시간)
     st.subheader("📊 실시간 랭킹")
     if db["users"]:
         df = pd.DataFrame([
-            {"닉네임": k, "메뉴": v["menu"], "자본금": v["cash"], "재고": v["inventory"]} 
+            {"닉네임": k, "메뉴": v["menu"], "자본금": f"{v['cash']:,}원", "재고": f"{v['inventory']}인분", "제출여부": "완료" if (v["day_ready"] if db["phase"]=="낮" else v["night_ready"]) else "대기중"} 
             for k, v in db["users"].items()
         ])
-        df = df.sort_values(by="자본금", ascending=False).reset_index(drop=True)
+        df['자본금_숫자'] = df['자본금'].str.replace('원', '').str.replace(',', '').astype(int)
+        df = df.sort_values(by="자본금_숫자", ascending=False).drop(columns=['자본금_숫자']).reset_index(drop=True)
         df.index = df.index + 1
         st.dataframe(df, use_container_width=True)
     
     st.divider()
     
-    # 비상 통제
     st.subheader("🚨 비상 통제 구역")
     kick_target = st.selectbox("강제 퇴장시킬 닉네임", ["선택 안함"] + list(db["users"].keys()))
     if st.button("❌ 선택 유저 퇴장") and kick_target != "선택 안함":
