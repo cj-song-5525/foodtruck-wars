@@ -84,7 +84,7 @@ def render_login():
     
     with tab1:
         with st.form("student_login_form"):
-            nick = st.text_input("닉네임 (7글자 이내)", max_chars=7)
+            nick = st.text_input("닉네임 (한글 7글자 이내)", max_chars=7)
             menu = st.selectbox("판매할 메뉴 선택", list(MENUS.keys()))
             init_inv = st.selectbox("첫날 준비할 인분 수", [30, 50, 70, 100])
             submit = st.form_submit_button("영업 준비 완료")
